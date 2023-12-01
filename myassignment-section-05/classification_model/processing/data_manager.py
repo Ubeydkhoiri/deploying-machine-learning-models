@@ -9,7 +9,8 @@ import pandas as pd
 from sklearn.pipeline import Pipeline
 
 from classification_model import __version__ as _version
-from classification_model.config.core import DATASET_DIR, TRAINED_MODEL_DIR, config
+from classification_model.config.core import (DATASET_DIR, TRAINED_MODEL_DIR,
+                                              config)
 
 logger = logging.getLogger(__name__)
 
@@ -22,50 +23,36 @@ def get_first_cabin(row: Any) -> Union[str, float]:
         return np.nan
 
 
-def get_title(passenger: str) -> str:
+def get_title(passenger: Any) -> str:
     """Extracts the title (Mr, Ms, etc) from the name variable."""
     line = passenger
-    if re.search("Mrs", line):
-        return "Mrs"
-    elif re.search("Mr", line):
-        return "Mr"
-    elif re.search("Miss", line):
-        return "Miss"
-    elif re.search("Master", line):
-        return "Master"
+    if re.search('Mrs', line):
+        return 'Mrs'
+    elif re.search('Mr', line):
+        return 'Mr'
+    elif re.search('Miss', line):
+        return 'Miss'
+    elif re.search('Master', line):
+        return 'Master'
     else:
-        return "Other"
-
-
-def pre_pipeline_preparation(*, dataframe: pd.DataFrame) -> pd.DataFrame:
-    # replace question marks with NaN values
-    data = dataframe.replace("?", np.nan)
-
-    # retain only the first cabin if more than
-    # 1 are available per passenger
-    data["cabin"] = data["cabin"].apply(get_first_cabin)
-
-    data["title"] = data["name"].apply(get_title)
-
-    # cast numerical variables as floats
-    data["fare"] = data["fare"].astype("float")
-    data["age"] = data["age"].astype("float")
-
-    # drop unnecessary variables
-    data.drop(labels=config.model_config.unused_fields, axis=1, inplace=True)
-
-    return data
-
-
-def _load_raw_dataset(*, file_name: str) -> pd.DataFrame:
-    dataframe = pd.read_csv(Path(f"{DATASET_DIR}/{file_name}"))
-    return dataframe
+        return 'Other'
 
 
 def load_dataset(*, file_name: str) -> pd.DataFrame:
     dataframe = pd.read_csv(Path(f"{DATASET_DIR}/{file_name}"))
-    transformed = pre_pipeline_preparation(dataframe=dataframe)
+    # replace question marks with NaN values
+    dataframe = dataframe.replace('?', np.nan)
 
+    # retain only the first cabin if more than
+    # 1 are available per passenger
+    dataframe['cabin'] = dataframe['cabin'].apply(get_first_cabin)
+    dataframe['title'] = dataframe['name'].apply(get_title)
+
+    dataframe['fare'] = dataframe['fare'].astype('float')
+    dataframe['age'] = dataframe['age'].astype('float')
+
+    # rename variables beginning with numbers to avoid syntax errors later
+    transformed = dataframe.drop(labels=config.model_config.unused_variables, axis=1)
     return transformed
 
 
@@ -89,7 +76,8 @@ def load_pipeline(*, file_name: str) -> Pipeline:
     """Load a persisted pipeline."""
 
     file_path = TRAINED_MODEL_DIR / file_name
-    return joblib.load(filename=file_path)
+    trained_model = joblib.load(filename=file_path)
+    return trained_model
 
 
 def remove_old_pipelines(*, files_to_keep: List[str]) -> None:
